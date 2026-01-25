@@ -84,6 +84,30 @@ class API {
         });
     }
 
+    static async deleteProblem(problemId) {
+        return this.request(`/problems/${problemId}`, {
+            method: 'DELETE'
+        });
+    }
+
+    static async updateProblem(problemId, problemData) {
+        return this.request(`/problems/${problemId}`, {
+            method: 'PUT',
+            body: JSON.stringify(problemData)
+        });
+    }
+
+    static async getTestCases(problemId) {
+        return this.request(`/problems/${problemId}/testcases`);
+    }
+
+    static async deleteTestCase(problemId, testCaseId) {
+        return this.request(`/problems/${problemId}/testcases/${testCaseId}`, {
+            method: 'DELETE'
+        });
+    }
+
+
     // Code Execution
     static async submitCode(problemId, languageId, sourceCode) {
         return this.request('/submit', {

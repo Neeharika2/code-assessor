@@ -80,11 +80,13 @@ func main() {
 				admin.PUT("/problems/:id", handlers.UpdateProblem)
 				admin.DELETE("/problems/:id", handlers.DeleteProblem)
 				admin.POST("/problems/:id/testcases", handlers.CreateTestCase)
+				admin.GET("/problems/:id/testcases", handlers.GetTestCases)
+				admin.DELETE("/problems/:id/testcases/:testcase_id", handlers.DeleteTestCase)
 				admin.GET("/problems/:id/submissions", handlers.GetProblemSubmissions)
 			}
 
 			// Authenticated user routes
-			protected.GET("/problems/:id/testcases", handlers.GetTestCases)
+			// protected.GET("/problems/:id/testcases", handlers.GetTestCases) // This route is now in the admin group
 		}
 	}
 

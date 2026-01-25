@@ -179,3 +179,23 @@ func GetTestCases(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"test_cases": testCases})
 }
+
+func DeleteTestCase(c *gin.Context) {
+	problemID := c.Param("id")
+	testCaseID := c.Param("testcase_id")
+
+	// Verify problem exists
+	var problem models.Problem
+	if err := database.DB.First(&problem, problemID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Problem not found"})
+		return
+	}
+
+	// Delete test case
+	if err := database.DB.Delete(&models.TestCase{}, testCaseID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete test case"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Test case deleted successfully"})
+}

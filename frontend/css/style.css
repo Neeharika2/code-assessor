@@ -374,6 +374,19 @@ body {
     color: var(--text-muted);
 }
 
+/* Admin Actions */
+.admin-actions {
+    padding: var(--spacing-md);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    gap: var(--spacing-sm);
+    justify-content: flex-end;
+}
+
+
 /* Editor Container */
 .editor-container {
     display: flex;
@@ -594,6 +607,15 @@ body {
 
 .btn-success:hover {
     background: var(--accent-green-hover);
+}
+
+.btn-danger {
+    background: var(--accent-red);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
 }
 
 .btn-block {

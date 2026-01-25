@@ -5,6 +5,7 @@ const problemsList = document.getElementById('problemsList');
 const problemDetail = document.getElementById('problemDetail');
 const authModal = document.getElementById('authModal');
 const createProblemModal = document.getElementById('createProblemModal');
+const editProblemModal = document.getElementById('editProblemModal');
 
 let currentTestCases = [];
 let selectedTestCaseIndex = 0;
@@ -49,22 +50,29 @@ function setupEventListeners() {
         btn.addEventListener('click', () => switchConsoleTab(btn));
     });
 
+    // Edit and Delete problem buttons
+    document.getElementById('editProblemBtn').addEventListener('click', openEditProblemModal);
+    document.getElementById('deleteProblemBtn').addEventListener('click', deleteProblem);
+
     // Modal close buttons
     document.querySelectorAll('.close').forEach(btn => {
         btn.addEventListener('click', () => {
             authModal.style.display = 'none';
             createProblemModal.style.display = 'none';
+            editProblemModal.style.display = 'none';
         });
     });
 
     // Forms
     document.getElementById('authForm').addEventListener('submit', handleAuth);
     document.getElementById('createProblemForm').addEventListener('submit', handleCreateProblem);
+    document.getElementById('editProblemForm').addEventListener('submit', handleEditProblem);
 
     // Click outside modal to close
     window.addEventListener('click', (e) => {
         if (e.target === authModal) authModal.style.display = 'none';
         if (e.target === createProblemModal) createProblemModal.style.display = 'none';
+        if (e.target === editProblemModal) editProblemModal.style.display = 'none';
     });
 }
 
@@ -208,6 +216,7 @@ async function loadProblem(id) {
         const problem = data.problem;
 
         currentProblemId = id;
+        currentProblem = problem; // Store for editing
         currentTestCases = problem.test_cases || [];
 
         problemDetail.innerHTML = `
@@ -236,6 +245,14 @@ async function loadProblem(id) {
 
         // Setup testcase selector
         setupTestCaseSelector();
+
+        // Show admin actions if user is admin
+        const adminActions = document.getElementById('adminActions');
+        if (currentUser && currentUser.role === 'admin') {
+            adminActions.style.display = 'flex';
+        } else {
+            adminActions.style.display = 'none';
+        }
 
         problemsView.style.display = 'none';
         problemView.style.display = 'block';
@@ -425,6 +442,228 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('finishBtn').addEventListener('click', finishProblemCreation);
     document.getElementById('backToProblemBtn').addEventListener('click', backToProblemStep);
 });
+
+let currentProblem = null;
+let editTestCaseCount = 0;
+let existingTestCases = [];
+let testCasesToDelete = [];
+
+function openEditProblemModal() {
+    if (!currentProblemId) {
+        alert('No problem selected');
+        return;
+    }
+
+    // Pre-fill the form with current problem data
+    document.getElementById('editProblemTitle').value = currentProblem.title;
+    document.getElementById('editProblemDescription').value = currentProblem.description;
+    document.getElementById('editProblemDifficulty').value = currentProblem.difficulty;
+    document.getElementById('editTimeLimit').value = currentProblem.time_limit;
+    document.getElementById('editMemoryLimit').value = currentProblem.memory_limit;
+
+    // Reset to first step
+    document.getElementById('editProblemStep').style.display = 'block';
+    document.getElementById('editTestCaseStep').style.display = 'none';
+
+    editProblemModal.style.display = 'block';
+}
+
+async function handleEditProblem(e) {
+    e.preventDefault();
+
+    // Move to test case management step
+    document.getElementById('editProblemStep').style.display = 'none';
+    document.getElementById('editTestCaseStep').style.display = 'block';
+
+    // Load existing test cases
+    await loadExistingTestCases();
+}
+
+async function loadExistingTestCases() {
+    try {
+        const data = await API.getTestCases(currentProblemId);
+        existingTestCases = data.test_cases || [];
+        testCasesToDelete = [];
+        editTestCaseCount = 0;
+
+        const container = document.getElementById('editTestCasesContainer');
+        container.innerHTML = '';
+
+        // Display existing test cases
+        existingTestCases.forEach((tc, index) => {
+            addEditTestCase(tc, index);
+        });
+    } catch (error) {
+        console.error('Error loading test cases:', error);
+        document.getElementById('editTestCasesContainer').innerHTML = '';
+    }
+}
+
+function addEditTestCase(existingData = null, existingIndex = null) {
+    editTestCaseCount++;
+    const container = document.getElementById('editTestCasesContainer');
+
+    const testCaseCard = document.createElement('div');
+    testCaseCard.className = 'test-case-card';
+    testCaseCard.dataset.index = editTestCaseCount;
+
+    if (existingData) {
+        testCaseCard.dataset.testcaseId = existingData.id;
+    }
+
+    const isExisting = existingData !== null;
+    const title = isExisting ? `Test Case ${existingIndex + 1} (ID: ${existingData.id})` : `New Test Case`;
+
+    testCaseCard.innerHTML = `
+        <div class="test-case-header">
+            <h4>${title}</h4>
+            <button type="button" class="remove-test-case" onclick="removeEditTestCase(${editTestCaseCount}, ${existingData ? existingData.id : 'null'})">×</button>
+        </div>
+        <div class="test-case-fields">
+            <div class="form-group">
+                <label>Input</label>
+                <textarea class="tc-input" rows="3" placeholder="Enter input for this test case">${existingData ? existingData.input : ''}</textarea>
+            </div>
+            <div class="form-group">
+                <label>Expected Output</label>
+                <textarea class="tc-output" rows="3" placeholder="Enter expected output">${existingData ? existingData.expected_output : ''}</textarea>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" class="tc-sample" id="edit-sample-${editTestCaseCount}" ${existingData && existingData.is_sample ? 'checked' : ''}>
+                <label for="edit-sample-${editTestCaseCount}">Mark as sample (visible to users)</label>
+            </div>
+        </div>
+    `;
+
+    container.appendChild(testCaseCard);
+}
+
+function removeEditTestCase(index, testCaseId) {
+    const card = document.querySelector(`.test-case-card[data-index="${index}"]`);
+    if (card) {
+        // If it's an existing test case, mark for deletion
+        if (testCaseId) {
+            testCasesToDelete.push(testCaseId);
+        }
+        card.remove();
+    }
+}
+
+async function saveAllEditChanges() {
+    try {
+        // Step 1: Update problem details
+        const problemData = {
+            title: document.getElementById('editProblemTitle').value,
+            description: document.getElementById('editProblemDescription').value,
+            difficulty: document.getElementById('editProblemDifficulty').value,
+            time_limit: parseInt(document.getElementById('editTimeLimit').value),
+            memory_limit: parseInt(document.getElementById('editMemoryLimit').value)
+        };
+
+        await API.updateProblem(currentProblemId, problemData);
+
+        // Step 2: Delete marked test cases
+        for (const testCaseId of testCasesToDelete) {
+            await API.deleteTestCase(currentProblemId, testCaseId);
+        }
+
+        // Step 3: Create/Update test cases
+        const testCaseCards = document.querySelectorAll('#editTestCasesContainer .test-case-card');
+
+        for (const card of testCaseCards) {
+            const input = card.querySelector('.tc-input').value.trim();
+            const output = card.querySelector('.tc-output').value.trim();
+            const isSample = card.querySelector('.tc-sample').checked;
+            const testCaseId = card.dataset.testcaseId;
+
+            if (!input || !output) {
+                alert('All test cases must have both input and output');
+                return;
+            }
+
+            const testCaseData = {
+                input,
+                expected_output: output,
+                is_sample: isSample,
+                points: 10
+            };
+
+            // If it's a new test case (no ID), create it
+            if (!testCaseId) {
+                await API.createTestCase(currentProblemId, testCaseData);
+            }
+            // Note: We don't have an update endpoint, so existing test cases
+            // would need to be deleted and recreated if modified
+        }
+
+        // Close modal and refresh
+        editProblemModal.style.display = 'none';
+        resetEditModal();
+        loadProblem(currentProblemId);
+
+        alert('Problem and test cases updated successfully!');
+    } catch (error) {
+        alert(`Error saving changes: ${error.message}`);
+    }
+}
+
+function resetEditModal() {
+    document.getElementById('editProblemStep').style.display = 'block';
+    document.getElementById('editTestCaseStep').style.display = 'none';
+    document.getElementById('editTestCasesContainer').innerHTML = '';
+    existingTestCases = [];
+    testCasesToDelete = [];
+    editTestCaseCount = 0;
+}
+
+function backToEditProblemStep() {
+    document.getElementById('editProblemStep').style.display = 'block';
+    document.getElementById('editTestCaseStep').style.display = 'none';
+}
+
+// Setup event listeners for edit test cases
+document.addEventListener('DOMContentLoaded', () => {
+    // ... existing code ...
+
+    document.getElementById('addEditTestCaseBtn').addEventListener('click', () => addEditTestCase());
+    document.getElementById('saveEditBtn').addEventListener('click', saveAllEditChanges);
+    document.getElementById('backToEditProblemBtn').addEventListener('click', backToEditProblemStep);
+});
+
+async function deleteProblem() {
+
+    if (!currentProblemId) {
+        alert('No problem selected');
+        return;
+    }
+
+    const confirmed = confirm(
+        'Are you sure you want to delete this problem?\n\n' +
+        'This will permanently delete:\n' +
+        '- The problem\n' +
+        '- All test cases (sample and hidden)\n' +
+        '- All submissions for this problem\n\n' +
+        'This action cannot be undone!'
+    );
+
+    if (!confirmed) return;
+
+    try {
+        await API.deleteProblem(currentProblemId);
+
+        // Go back to problems list
+        problemsView.style.display = 'block';
+        problemView.style.display = 'none';
+        currentProblemId = null;
+
+        // Reload problems list
+        loadProblems();
+
+        alert('Problem deleted successfully!');
+    } catch (error) {
+        alert(`Error deleting problem: ${error.message}`);
+    }
+}
 
 function escapeHtml(text) {
     const div = document.createElement('div');
