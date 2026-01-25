@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coding Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h1>CodePlatform</h1>
+            </div>
+            <div class="nav-menu">
+                <button id="loginBtn" class="btn btn-secondary">Login</button>
+                <button id="registerBtn" class="btn btn-primary">Register</button>
+                <div id="userMenu" class="user-menu" style="display: none;">
+                    <span id="username" class="username"></span>
+                    <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Problems List View -->
+        <div id="problemsView" class="view">
+            <div class="view-header">
+                <h2>Problems</h2>
+                <button id="createProblemBtn" class="btn btn-primary" style="display: none;">Create Problem</button>
+            </div>
+            <div id="problemsList" class="problems-grid"></div>
+        </div>
+
+        <!-- Problem Detail View -->
+        <div id="problemView" class="view" style="display: none;">
+            <div class="problem-container">
+                <!-- Problem Description -->
+                <div class="problem-panel">
+                    <button id="backBtn" class="btn btn-secondary">← Back to Problems</button>
+                    <div id="problemDetail" class="problem-detail"></div>
+                </div>
+
+                <!-- Code Editor -->
+                <div class="editor-panel">
+                    <div class="editor-header">
+                        <select id="languageSelect" class="language-select">
+                            <option value="71">Python 3</option>
+                            <option value="63">JavaScript (Node.js)</option>
+                            <option value="54">C++ (GCC 9.2.0)</option>
+                            <option value="62">Java (OpenJDK 13.0.1)</option>
+                            <option value="50">C (GCC 9.2.0)</option>
+                            <option value="60">Go (1.13.5)</option>
+                        </select>
+                        <div class="editor-actions">
+                            <button id="runBtn" class="btn btn-secondary">Run Code</button>
+                            <button id="submitBtn" class="btn btn-success">Submit</button>
+                        </div>
+                    </div>
+                    <div id="editor" class="code-editor"></div>
+                    
+                    <!-- Custom Input Section -->
+                    <div class="input-section">
+                        <label for="customInput">Custom Input (for Run Code):</label>
+                        <textarea id="customInput" class="custom-input" placeholder="Enter custom input here..."></textarea>
+                    </div>
+
+                    <!-- Results Panel -->
+                    <div id="resultsPanel" class="results-panel" style="display: none;">
+                        <h3>Results</h3>
+                        <div id="resultsContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="authTitle">Login</h2>
+            <form id="authForm">
+                <div class="form-group">
+                    <label for="authUsername">Username</label>
+                    <input type="text" id="authUsername" required>
+                </div>
+                <div class="form-group" id="emailGroup" style="display: none;">
+                    <label for="authEmail">Email</label>
+                    <input type="email" id="authEmail">
+                </div>
+                <div class="form-group">
+                    <label for="authPassword">Password</label>
+                    <input type="password" id="authPassword" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Submit</button>
+            </form>
+            <p id="authSwitch" class="auth-switch"></p>
+        </div>
+    </div>
+
+    <!-- Create Problem Modal -->
+    <div id="createProblemModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Create Problem</h2>
+            <form id="createProblemForm">
+                <div class="form-group">
+                    <label for="problemTitle">Title</label>
+                    <input type="text" id="problemTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="problemDescription">Description</label>
+                    <textarea id="problemDescription" rows="6" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="problemDifficulty">Difficulty</label>
+                    <select id="problemDifficulty">
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="timeLimit">Time Limit (ms)</label>
+                        <input type="number" id="timeLimit" value="2000">
+                    </div>
+                    <div class="form-group">
+                        <label for="memoryLimit">Memory Limit (KB)</label>
+                        <input type="number" id="memoryLimit" value="256000">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Create Problem</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Monaco Editor -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/editor.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
