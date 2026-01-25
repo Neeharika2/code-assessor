@@ -33,6 +33,13 @@ func SubmitCode(c *gin.Context) {
 		return
 	}
 
+	// Require authentication for submissions
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required to submit code"})
+		return
+	}
+
 	// Get problem details
 	var problem models.Problem
 	if err := database.DB.First(&problem, req.ProblemID).Error; err != nil {
@@ -90,6 +97,7 @@ func SubmitCode(c *gin.Context) {
 
 	// Create submission record
 	submission := models.Submission{
+		UserID:        userID.(uint),
 		ProblemID:     req.ProblemID,
 		LanguageID:    req.LanguageID,
 		SourceCode:    req.SourceCode,
@@ -102,15 +110,31 @@ func SubmitCode(c *gin.Context) {
 		SubmittedAt:   time.Now(),
 	}
 
-	// Get user ID if authenticated
-	if userID, exists := c.Get("user_id"); exists {
-		submission.UserID = userID.(uint)
-	}
-
 	// Save submission
 	if err := database.DB.Create(&submission).Error; err != nil {
-		// Log error but don't fail the request
 		log.Printf("Failed to save submission: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save submission"})
+		return
+	}
+
+	// If all tests passed, mark problem as completed (if not already completed)
+	if allPassed {
+		var completion models.UserProblemCompletion
+		result := database.DB.Where("user_id = ? AND problem_id = ?", userID, req.ProblemID).First(&completion)
+		
+		// Only create completion record if it doesn't exist
+		if result.Error != nil {
+			completion = models.UserProblemCompletion{
+				UserID:            userID.(uint),
+				ProblemID:         req.ProblemID,
+				CompletedAt:       time.Now(),
+				FirstSubmissionID: submission.ID,
+			}
+			if err := database.DB.Create(&completion).Error; err != nil {
+				log.Printf("Failed to create completion record: %v", err)
+				// Don't fail the request, just log the error
+			}
+		}
 	}
 
 	response := SubmissionResponse{

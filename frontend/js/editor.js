@@ -91,6 +91,13 @@ async function submitCode() {
         return;
     }
 
+    // Check if user is authenticated
+    if (!currentUser) {
+        alert('Please login to submit your code!');
+        showAuthModal('login');
+        return;
+    }
+
     const sourceCode = editor.getValue();
     const languageId = parseInt(document.getElementById('languageSelect').value);
 
@@ -107,6 +114,17 @@ async function submitCode() {
     try {
         const result = await API.submitCode(currentProblemId, languageId, sourceCode);
         displaySubmitResult(result);
+
+        // If all tests passed, show success message and reload problems list
+        if (result.all_passed) {
+            setTimeout(() => {
+                alert('🎉 Congratulations! You solved this problem!');
+                // Reload problems list to update completion status
+                if (typeof loadProblems === 'function') {
+                    loadProblems();
+                }
+            }, 500);
+        }
     } catch (error) {
         showResults(`Error: ${error.message}`, true);
     }

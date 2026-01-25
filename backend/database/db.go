@@ -33,6 +33,7 @@ func Migrate() error {
 		&models.Problem{},
 		&models.TestCase{},
 		&models.Submission{},
+		&models.UserProblemCompletion{},
 	)
 	
 	if err != nil {

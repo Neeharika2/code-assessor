@@ -9,6 +9,7 @@ const editProblemModal = document.getElementById('editProblemModal');
 
 let currentTestCases = [];
 let selectedTestCaseIndex = 0;
+let completedProblemIds = new Set(); // Track which problems the user has completed
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -42,7 +43,13 @@ function setupEventListeners() {
 
     // Tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => switchTab(btn));
+        btn.addEventListener('click', () => {
+            switchTab(btn);
+            // Load submissions when switching to submissions tab
+            if (btn.dataset.tab === 'submissions' && currentProblemId) {
+                loadSubmissions(currentProblemId);
+            }
+        });
     });
 
     // Console tab switching
@@ -181,6 +188,20 @@ function updateAuthUI() {
 async function loadProblems() {
     try {
         const data = await API.getProblems();
+
+        // Load completed problems if user is authenticated
+        if (currentUser) {
+            try {
+                const completedData = await API.getCompletedProblems();
+                completedProblemIds = new Set(completedData.completed_problem_ids || []);
+            } catch (error) {
+                console.log('Could not load completed problems:', error);
+                completedProblemIds = new Set();
+            }
+        } else {
+            completedProblemIds = new Set();
+        }
+
         displayProblems(data.problems || []);
     } catch (error) {
         problemsList.innerHTML = `<tr><td colspan="3" class="loading">Error loading problems: ${error.message}</td></tr>`;
@@ -193,21 +214,26 @@ function displayProblems(problems) {
         return;
     }
 
-    problemsList.innerHTML = problems.map(problem => `
-        <tr onclick="loadProblem(${problem.id})">
-            <td>
-                <div class="problem-title">${escapeHtml(problem.title)}</div>
-            </td>
-            <td>
-                <span class="difficulty-badge difficulty-${problem.difficulty}">
-                    ${problem.difficulty}
-                </span>
-            </td>
-            <td>
-                <div class="problem-description">${escapeHtml(problem.description.substring(0, 100))}...</div>
-            </td>
-        </tr>
-    `).join('');
+    problemsList.innerHTML = problems.map(problem => {
+        const isCompleted = completedProblemIds.has(problem.id);
+        const completionBadge = isCompleted ? '<span style="color: var(--accent-green); margin-left: 8px; font-size: 16px;" title="Completed">✓</span>' : '';
+
+        return `
+            <tr onclick="loadProblem(${problem.id})">
+                <td>
+                    <div class="problem-title">${escapeHtml(problem.title)}${completionBadge}</div>
+                </td>
+                <td>
+                    <span class="difficulty-badge difficulty-${problem.difficulty}">
+                        ${problem.difficulty}
+                    </span>
+                </td>
+                <td>
+                    <div class="problem-description">${escapeHtml(problem.description.substring(0, 100))}...</div>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 async function loadProblem(id) {
@@ -669,4 +695,78 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Load and display submissions for a problem
+async function loadSubmissions(problemId) {
+    const submissionsContent = document.querySelector('#submissionsTab .submissions-content');
+
+    if (!currentUser) {
+        submissionsContent.innerHTML = '<p class="text-muted">Please login to view your submissions.</p>';
+        return;
+    }
+
+    submissionsContent.innerHTML = '<p class="text-muted">Loading submissions...</p>';
+
+    try {
+        const data = await API.getProblemSubmissions(problemId);
+        displaySubmissions(data.submissions || []);
+    } catch (error) {
+        submissionsContent.innerHTML = `<p class="text-muted" style="color: var(--accent-red);">Error loading submissions: ${error.message}</p>`;
+    }
+}
+
+function displaySubmissions(submissions) {
+    const submissionsContent = document.querySelector('#submissionsTab .submissions-content');
+
+    if (submissions.length === 0) {
+        submissionsContent.innerHTML = '<p class="text-muted">No submissions yet. Submit your code to see your history here!</p>';
+        return;
+    }
+
+    const html = `
+        <div style="overflow-x: auto;">
+            <table class="problems-table" style="margin-top: 0;">
+                <thead>
+                    <tr>
+                        <th width="15%">Status</th>
+                        <th width="20%">Language</th>
+                        <th width="15%">Tests Passed</th>
+                        <th width="20%">Time</th>
+                        <th width="30%">Submitted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${submissions.map(sub => {
+        const statusColor = sub.passed ? 'var(--accent-green)' : 'var(--accent-red)';
+        const statusText = sub.passed ? '✓ Accepted' : '✗ Failed';
+        const languageNames = {
+            71: 'Python 3',
+            63: 'JavaScript',
+            54: 'C++',
+            62: 'Java',
+            50: 'C',
+            60: 'Go'
+        };
+        const date = new Date(sub.submitted_at);
+        const formattedDate = date.toLocaleString();
+
+        return `
+                            <tr style="cursor: default;">
+                                <td>
+                                    <span style="color: ${statusColor}; font-weight: 600;">${statusText}</span>
+                                </td>
+                                <td>${languageNames[sub.language_id] || 'Unknown'}</td>
+                                <td>${sub.passed_tests} / ${sub.total_tests}</td>
+                                <td>${sub.execution_time.toFixed(2)}s</td>
+                                <td style="font-size: 13px;">${formattedDate}</td>
+                            </tr>
+                        `;
+    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    submissionsContent.innerHTML = html;
 }

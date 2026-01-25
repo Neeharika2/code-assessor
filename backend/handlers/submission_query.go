@@ -91,15 +91,16 @@ func GetProblemSubmissions(c *gin.Context) {
 
 	query := database.DB.Preload("User").Where("problem_id = ?", problemID)
 
-	// Only show user's own submissions unless admin
+	// Users can only see their own submissions, admins can see all
 	role, _ := c.Get("role")
+	userID, userExists := c.Get("user_id")
+	
 	if role != "admin" {
-		if userID, exists := c.Get("user_id"); exists {
-			query = query.Where("user_id = ?", userID)
-		} else {
+		if !userExists {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
 			return
 		}
+		query = query.Where("user_id = ?", userID)
 	}
 
 	query = query.Order("submitted_at DESC").Limit(50)
@@ -147,4 +148,30 @@ func GetSubmissionStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+}
+
+// GetUserCompletedProblems returns all problem IDs that the authenticated user has completed
+func GetUserCompletedProblems(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	var completions []models.UserProblemCompletion
+	if err := database.DB.Where("user_id = ?", userID).Find(&completions).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch completed problems"})
+		return
+	}
+
+	// Extract problem IDs
+	problemIDs := make([]uint, len(completions))
+	for i, completion := range completions {
+		problemIDs[i] = completion.ProblemID
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"completed_problem_ids": problemIDs,
+		"total_completed": len(problemIDs),
+	})
 }

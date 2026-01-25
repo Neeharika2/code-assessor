@@ -56,8 +56,7 @@ func main() {
 		api.GET("/problems", handlers.GetProblems)
 		api.GET("/problems/:id", handlers.GetProblem)
 
-		// Code execution (public for now, can add auth later)
-		api.POST("/submit", handlers.SubmitCode)
+		// Code execution - run is public, submit requires auth
 		api.POST("/run", handlers.RunCode)
 
 		// Public submission queries
@@ -69,8 +68,11 @@ func main() {
 		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware())
 		{
-			// User's own submissions
+			// User's own submissions and completed problems
 			protected.GET("/my/submissions", handlers.GetUserSubmissions)
+			protected.GET("/my/completed-problems", handlers.GetUserCompletedProblems)
+			protected.POST("/submit", handlers.SubmitCode)
+			protected.GET("/problems/:id/submissions", handlers.GetProblemSubmissions)
 			
 			// Admin-only routes
 			admin := protected.Group("")
@@ -82,7 +84,6 @@ func main() {
 				admin.POST("/problems/:id/testcases", handlers.CreateTestCase)
 				admin.GET("/problems/:id/testcases", handlers.GetTestCases)
 				admin.DELETE("/problems/:id/testcases/:testcase_id", handlers.DeleteTestCase)
-				admin.GET("/problems/:id/submissions", handlers.GetProblemSubmissions)
 			}
 
 			// Authenticated user routes

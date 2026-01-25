@@ -116,8 +116,7 @@ class API {
                 problem_id: problemId,
                 language_id: languageId,
                 source_code: sourceCode
-            }),
-            skipAuth: true
+            })
         });
     }
 
@@ -131,5 +130,15 @@ class API {
             }),
             skipAuth: true
         });
+    }
+
+    // Get user's completed problems
+    static async getCompletedProblems() {
+        return this.request('/my/completed-problems');
+    }
+
+    // Get submissions for a specific problem
+    static async getProblemSubmissions(problemId) {
+        return this.request(`/problems/${problemId}/submissions`);
     }
 }
