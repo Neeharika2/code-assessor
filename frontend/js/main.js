@@ -284,6 +284,9 @@ function selectTestCase(index) {
     document.getElementById('testcaseOutput').textContent = tc.expected_output;
 }
 
+let createdProblemId = null;
+let testCaseCount = 0;
+
 async function handleCreateProblem(e) {
     e.preventDefault();
 
@@ -296,15 +299,132 @@ async function handleCreateProblem(e) {
     };
 
     try {
-        await API.createProblem(problemData);
-        createProblemModal.style.display = 'none';
-        e.target.reset();
-        loadProblems();
-        alert('Problem created successfully!');
+        const result = await API.createProblem(problemData);
+        createdProblemId = result.problem.id;
+
+        // Move to test case step
+        document.getElementById('problemStep').style.display = 'none';
+        document.getElementById('testCaseStep').style.display = 'block';
+
+        // Add initial test case
+        testCaseCount = 0;
+        document.getElementById('testCasesContainer').innerHTML = '';
+        addTestCase();
     } catch (error) {
         alert(`Error creating problem: ${error.message}`);
     }
 }
+
+function addTestCase() {
+    testCaseCount++;
+    const container = document.getElementById('testCasesContainer');
+
+    const testCaseCard = document.createElement('div');
+    testCaseCard.className = 'test-case-card';
+    testCaseCard.dataset.index = testCaseCount;
+
+    testCaseCard.innerHTML = `
+        <div class="test-case-header">
+            <h4>Test Case ${testCaseCount}</h4>
+            <button type="button" class="remove-test-case" onclick="removeTestCase(${testCaseCount})">×</button>
+        </div>
+        <div class="test-case-fields">
+            <div class="form-group">
+                <label>Input</label>
+                <textarea class="tc-input" rows="3" placeholder="Enter input for this test case"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Expected Output</label>
+                <textarea class="tc-output" rows="3" placeholder="Enter expected output"></textarea>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" class="tc-sample" id="sample-${testCaseCount}">
+                <label for="sample-${testCaseCount}">Mark as sample (visible to users)</label>
+            </div>
+        </div>
+    `;
+
+    container.appendChild(testCaseCard);
+}
+
+function removeTestCase(index) {
+    const card = document.querySelector(`.test-case-card[data-index="${index}"]`);
+    if (card) {
+        card.remove();
+    }
+}
+
+async function finishProblemCreation() {
+    const testCaseCards = document.querySelectorAll('.test-case-card');
+
+    if (testCaseCards.length === 0) {
+        alert('Please add at least one test case');
+        return;
+    }
+
+    const testCases = [];
+    let hasError = false;
+
+    testCaseCards.forEach((card, index) => {
+        const input = card.querySelector('.tc-input').value.trim();
+        const output = card.querySelector('.tc-output').value.trim();
+        const isSample = card.querySelector('.tc-sample').checked;
+
+        if (!input || !output) {
+            alert(`Test Case ${index + 1}: Both input and output are required`);
+            hasError = true;
+            return;
+        }
+
+        testCases.push({
+            input,
+            expected_output: output,
+            is_sample: isSample,
+            points: 10
+        });
+    });
+
+    if (hasError) return;
+
+    try {
+        // Create all test cases
+        for (const testCase of testCases) {
+            await API.createTestCase(createdProblemId, testCase);
+        }
+
+        // Close modal and refresh
+        createProblemModal.style.display = 'none';
+        resetCreateProblemModal();
+        loadProblems();
+        alert('Problem and test cases created successfully!');
+    } catch (error) {
+        alert(`Error creating test cases: ${error.message}`);
+    }
+}
+
+function resetCreateProblemModal() {
+    document.getElementById('problemStep').style.display = 'block';
+    document.getElementById('testCaseStep').style.display = 'none';
+    document.getElementById('createProblemForm').reset();
+    document.getElementById('testCasesContainer').innerHTML = '';
+    createdProblemId = null;
+    testCaseCount = 0;
+}
+
+function backToProblemStep() {
+    if (confirm('Going back will discard the problem. Are you sure?')) {
+        resetCreateProblemModal();
+    }
+}
+
+// Setup event listeners for test case creation
+document.addEventListener('DOMContentLoaded', () => {
+    // ... existing code ...
+
+    document.getElementById('addTestCaseBtn').addEventListener('click', addTestCase);
+    document.getElementById('finishBtn').addEventListener('click', finishProblemCreation);
+    document.getElementById('backToProblemBtn').addEventListener('click', backToProblemStep);
+});
 
 function escapeHtml(text) {
     const div = document.createElement('div');

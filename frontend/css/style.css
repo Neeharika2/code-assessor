@@ -621,7 +621,9 @@ body {
     border: 1px solid var(--border-primary);
     border-radius: var(--radius-lg);
     width: 90%;
-    max-width: 500px;
+    max-width: 700px;
+    max-height: 85vh;
+    overflow-y: auto;
     position: relative;
 }
 
@@ -744,4 +746,84 @@ body {
     .right-panel {
         flex: 1;
     }
+}
+
+/* Modal Steps */
+.modal-step {
+    display: block;
+}
+
+/* Test Cases Container */
+#testCasesContainer {
+    max-height: 50vh;
+    overflow-y: auto;
+    margin-bottom: var(--spacing-md);
+    padding-right: var(--spacing-xs);
+}
+
+/* Test Case Form */
+.test-case-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    position: relative;
+}
+
+.test-case-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.test-case-header h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.remove-test-case {
+    background: none;
+    border: none;
+    color: var(--accent-red);
+    cursor: pointer;
+    font-size: 20px;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.remove-test-case:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.test-case-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: auto;
+    cursor: pointer;
+}
+
+.checkbox-group label {
+    margin: 0;
+    cursor: pointer;
+    user-select: none;
 }

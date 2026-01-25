@@ -17,5 +17,5 @@ type Problem struct {
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
-	TestCases   []TestCase     `gorm:"foreignKey:ProblemID" json:"test_cases,omitempty"`
+	TestCases   []TestCase     `gorm:"constraint:OnDelete:CASCADE;foreignKey:ProblemID" json:"test_cases,omitempty"`
 }
