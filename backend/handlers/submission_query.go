@@ -115,10 +115,10 @@ func GetProblemSubmissions(c *gin.Context) {
 // GetSubmissionStats returns statistics for a user or problem
 func GetSubmissionStats(c *gin.Context) {
 	type Stats struct {
-		TotalSubmissions int     `json:"total_submissions"`
-		PassedSubmissions int    `json:"passed_submissions"`
-		FailedSubmissions int    `json:"failed_submissions"`
-		SuccessRate      float64 `json:"success_rate"`
+		TotalSubmissions  int64   `json:"total_submissions"`
+		PassedSubmissions int64   `json:"passed_submissions"`
+		FailedSubmissions int64   `json:"failed_submissions"`
+		SuccessRate       float64 `json:"success_rate"`
 	}
 
 	var stats Stats

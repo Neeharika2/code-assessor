@@ -97,13 +97,13 @@ class API {
         });
     }
 
-    static async runCode(sourceCode, languageId, input = '') {
+    static async runCode(problemId, languageId, sourceCode) {
         return this.request('/run', {
             method: 'POST',
             body: JSON.stringify({
-                source_code: sourceCode,
+                problem_id: problemId,
                 language_id: languageId,
-                input: input
+                source_code: sourceCode
             }),
             skipAuth: true
         });

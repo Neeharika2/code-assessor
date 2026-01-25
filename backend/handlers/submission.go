@@ -124,12 +124,12 @@ func SubmitCode(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// RunCode allows running code with custom input (without test cases)
+// RunCode validates code against sample test cases only
 func RunCode(c *gin.Context) {
 	var req struct {
+		ProblemID  uint   `json:"problem_id" binding:"required"`
 		SourceCode string `json:"source_code" binding:"required"`
 		LanguageID int    `json:"language_id" binding:"required"`
-		Input      string `json:"input"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -137,22 +137,68 @@ func RunCode(c *gin.Context) {
 		return
 	}
 
-	result, err := services.SubmitCode(
-		req.SourceCode,
-		req.LanguageID,
-		req.Input,
-		"", // No expected output for custom run
-		5000,   // 5 second default time limit
-		256000, // 256MB default memory limit
-	)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to execute code",
-			"details": err.Error(),
-		})
+	// Get problem details
+	var problem models.Problem
+	if err := database.DB.First(&problem, req.ProblemID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Problem not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	// Get ONLY sample test cases for this problem
+	var testCases []models.TestCase
+	if err := database.DB.Where("problem_id = ? AND is_sample = ?", req.ProblemID, true).Find(&testCases).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch test cases"})
+		return
+	}
+
+	if len(testCases) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No sample test cases found for this problem"})
+		return
+	}
+
+	// Run code against sample test cases
+	var results []services.TestResult
+	passedCount := 0
+	var totalTime float64
+	var maxMemory int
+
+	for _, testCase := range testCases {
+		result, err := services.SubmitCode(
+			req.SourceCode,
+			req.LanguageID,
+			testCase.Input,
+			strings.TrimSpace(testCase.ExpectedOutput),
+			problem.TimeLimit,
+			problem.MemoryLimit,
+		)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to execute code",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		results = append(results, *result)
+		if result.Passed {
+			passedCount++
+		}
+		totalTime += result.Time
+		if result.Memory > maxMemory {
+			maxMemory = result.Memory
+		}
+	}
+
+	allPassed := passedCount == len(testCases)
+
+	response := SubmissionResponse{
+		SubmissionID: 0, // No submission record for run code
+		AllPassed:    allPassed,
+		TotalTests:   len(testCases),
+		PassedTests:  passedCount,
+		TestResults:  results,
+	}
+
+	c.JSON(http.StatusOK, response)
 }

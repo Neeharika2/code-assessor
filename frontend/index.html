@@ -1,20 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coding Platform</title>
+    <title>CodePlatform</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
-            <div class="nav-brand">
-                <h1>CodePlatform</h1>
+            <div class="nav-left">
+                <div class="nav-brand">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 18l6-6-6-6M8 6l-6 6 6 6" />
+                    </svg>
+                    <h1>CodePlatform</h1>
+                </div>
+                <button id="problemsListBtn" class="btn-nav">Problems</button>
             </div>
             <div class="nav-menu">
                 <button id="loginBtn" class="btn btn-secondary">Login</button>
@@ -28,53 +36,135 @@
     </nav>
 
     <!-- Main Container -->
-    <div class="container">
+    <div class="main-container">
         <!-- Problems List View -->
-        <div id="problemsView" class="view">
-            <div class="view-header">
+        <div id="problemsView" class="problems-view">
+            <div class="problems-header">
                 <h2>Problems</h2>
-                <button id="createProblemBtn" class="btn btn-primary" style="display: none;">Create Problem</button>
+                <button id="createProblemBtn" class="btn btn-primary" style="display: none;">+ New Problem</button>
             </div>
-            <div id="problemsList" class="problems-grid"></div>
+            <div class="problems-table-container">
+                <table class="problems-table">
+                    <thead>
+                        <tr>
+                            <th width="50%">Title</th>
+                            <th width="15%">Difficulty</th>
+                            <th width="35%">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody id="problemsList">
+                        <!-- Problems will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- Problem Detail View -->
-        <div id="problemView" class="view" style="display: none;">
-            <div class="problem-container">
-                <!-- Problem Description -->
-                <div class="problem-panel">
-                    <button id="backBtn" class="btn btn-secondary">← Back to Problems</button>
-                    <div id="problemDetail" class="problem-detail"></div>
-                </div>
+        <div id="problemView" class="problem-view" style="display: none;">
+            <!-- Split Panel Container -->
+            <div class="split-container">
+                <!-- Left Panel: Problem Description -->
+                <div class="left-panel">
+                    <div class="panel-tabs">
+                        <button class="tab-btn active" data-tab="description">Description</button>
+                        <button class="tab-btn" data-tab="editorial">Editorial</button>
+                        <button class="tab-btn" data-tab="submissions">Submissions</button>
+                    </div>
 
-                <!-- Code Editor -->
-                <div class="editor-panel">
-                    <div class="editor-header">
-                        <select id="languageSelect" class="language-select">
-                            <option value="71">Python 3</option>
-                            <option value="63">JavaScript (Node.js)</option>
-                            <option value="54">C++ (GCC 9.2.0)</option>
-                            <option value="62">Java (OpenJDK 13.0.1)</option>
-                            <option value="50">C (GCC 9.2.0)</option>
-                            <option value="60">Go (1.13.5)</option>
-                        </select>
-                        <div class="editor-actions">
-                            <button id="runBtn" class="btn btn-secondary">Run Code</button>
-                            <button id="submitBtn" class="btn btn-success">Submit</button>
+                    <div class="tab-content">
+                        <!-- Description Tab -->
+                        <div id="descriptionTab" class="tab-pane active">
+                            <div id="problemDetail" class="problem-detail">
+                                <!-- Problem details will be inserted here -->
+                            </div>
+                        </div>
+
+                        <!-- Editorial Tab -->
+                        <div id="editorialTab" class="tab-pane">
+                            <div class="editorial-content">
+                                <p class="text-muted">Editorial coming soon...</p>
+                            </div>
+                        </div>
+
+                        <!-- Submissions Tab -->
+                        <div id="submissionsTab" class="tab-pane">
+                            <div class="submissions-content">
+                                <p class="text-muted">Your submissions will appear here...</p>
+                            </div>
                         </div>
                     </div>
-                    <div id="editor" class="code-editor"></div>
-                    
-                    <!-- Custom Input Section -->
-                    <div class="input-section">
-                        <label for="customInput">Custom Input (for Run Code):</label>
-                        <textarea id="customInput" class="custom-input" placeholder="Enter custom input here..."></textarea>
-                    </div>
+                </div>
 
-                    <!-- Results Panel -->
-                    <div id="resultsPanel" class="results-panel" style="display: none;">
-                        <h3>Results</h3>
-                        <div id="resultsContent"></div>
+                <!-- Resize Handle -->
+                <div class="resize-handle"></div>
+
+                <!-- Right Panel: Code Editor -->
+                <div class="right-panel">
+                    <div class="editor-container">
+                        <!-- Editor Header -->
+                        <div class="editor-header">
+                            <select id="languageSelect" class="language-select">
+                                <option value="71">Python 3</option>
+                                <option value="63">JavaScript (Node.js)</option>
+                                <option value="54">C++ (GCC 9.2.0)</option>
+                                <option value="62">Java (OpenJDK 13.0.1)</option>
+                                <option value="50">C (GCC 9.2.0)</option>
+                                <option value="60">Go (1.13.5)</option>
+                            </select>
+                            <div class="editor-actions">
+                                <button id="runBtn" class="btn btn-secondary">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                    </svg>
+                                    Run
+                                </button>
+                                <button id="submitBtn" class="btn btn-success">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    Submit
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Monaco Editor -->
+                        <div id="editor" class="code-editor"></div>
+
+                        <!-- Console Panel -->
+                        <div class="console-panel">
+                            <div class="console-tabs">
+                                <button class="console-tab-btn active" data-console-tab="testcase">Testcase</button>
+                                <button class="console-tab-btn" data-console-tab="result">Test Result</button>
+                            </div>
+
+                            <div class="console-content">
+                                <!-- Testcase Tab -->
+                                <div id="testcaseTab" class="console-pane active">
+                                    <div class="testcase-selector" id="testcaseSelector">
+                                        <!-- Testcase buttons will be inserted here -->
+                                    </div>
+                                    <div class="testcase-display">
+                                        <div class="testcase-section">
+                                            <label>Input:</label>
+                                            <pre id="testcaseInput" class="testcase-pre"></pre>
+                                        </div>
+                                        <div class="testcase-section">
+                                            <label>Expected Output:</label>
+                                            <pre id="testcaseOutput" class="testcase-pre"></pre>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Result Tab -->
+                                <div id="resultTab" class="console-pane">
+                                    <div id="resultsContent" class="results-content">
+                                        <p class="text-muted">Run your code to see results here...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -148,4 +238,5 @@
     <script src="js/editor.js"></script>
     <script src="js/main.js"></script>
 </body>
+
 </html>

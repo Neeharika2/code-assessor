@@ -120,7 +120,8 @@ func SubmitCode(sourceCode string, languageID int, stdin, expectedOutput string,
 	}
 
 	// Status ID 3 = Accepted
-	result.Passed = judge0Resp.Status.ID == 3
+	// Only mark as passed if there's an expected output to validate against
+	result.Passed = expectedOutput != "" && judge0Resp.Status.ID == 3
 
 	return result, nil
 }

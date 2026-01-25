@@ -6,6 +6,9 @@ const problemDetail = document.getElementById('problemDetail');
 const authModal = document.getElementById('authModal');
 const createProblemModal = document.getElementById('createProblemModal');
 
+let currentTestCases = [];
+let selectedTestCaseIndex = 0;
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     initEditor();
@@ -21,7 +24,7 @@ function setupEventListeners() {
     document.getElementById('logoutBtn').addEventListener('click', logout);
 
     // Navigation
-    document.getElementById('backBtn').addEventListener('click', () => {
+    document.getElementById('problemsListBtn').addEventListener('click', () => {
         problemsView.style.display = 'block';
         problemView.style.display = 'none';
         currentProblemId = null;
@@ -34,6 +37,16 @@ function setupEventListeners() {
     // Create problem
     document.getElementById('createProblemBtn').addEventListener('click', () => {
         createProblemModal.style.display = 'block';
+    });
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn));
+    });
+
+    // Console tab switching
+    document.querySelectorAll('.console-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchConsoleTab(btn));
     });
 
     // Modal close buttons
@@ -53,6 +66,31 @@ function setupEventListeners() {
         if (e.target === authModal) authModal.style.display = 'none';
         if (e.target === createProblemModal) createProblemModal.style.display = 'none';
     });
+}
+
+// Tab Switching
+function switchTab(clickedBtn) {
+    const tabName = clickedBtn.dataset.tab;
+
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    clickedBtn.classList.add('active');
+
+    // Update tab panes
+    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+    document.getElementById(`${tabName}Tab`).classList.add('active');
+}
+
+function switchConsoleTab(clickedBtn) {
+    const tabName = clickedBtn.dataset.consoleTab;
+
+    // Update tab buttons
+    document.querySelectorAll('.console-tab-btn').forEach(btn => btn.classList.remove('active'));
+    clickedBtn.classList.add('active');
+
+    // Update tab panes
+    document.querySelectorAll('.console-pane').forEach(pane => pane.classList.remove('active'));
+    document.getElementById(`${tabName}Tab`).classList.add('active');
 }
 
 // Auth
@@ -137,26 +175,30 @@ async function loadProblems() {
         const data = await API.getProblems();
         displayProblems(data.problems || []);
     } catch (error) {
-        problemsList.innerHTML = `<div class="loading">Error loading problems: ${error.message}</div>`;
+        problemsList.innerHTML = `<tr><td colspan="3" class="loading">Error loading problems: ${error.message}</td></tr>`;
     }
 }
 
 function displayProblems(problems) {
     if (problems.length === 0) {
-        problemsList.innerHTML = '<div class="loading">No problems available yet.</div>';
+        problemsList.innerHTML = '<tr><td colspan="3" class="loading">No problems available yet.</td></tr>';
         return;
     }
 
     problemsList.innerHTML = problems.map(problem => `
-        <div class="problem-card" onclick="loadProblem(${problem.id})">
-            <h3>${escapeHtml(problem.title)}</h3>
-            <p>${escapeHtml(problem.description.substring(0, 150))}...</p>
-            <div class="problem-meta">
+        <tr onclick="loadProblem(${problem.id})">
+            <td>
+                <div class="problem-title">${escapeHtml(problem.title)}</div>
+            </td>
+            <td>
                 <span class="difficulty-badge difficulty-${problem.difficulty}">
                     ${problem.difficulty}
                 </span>
-            </div>
-        </div>
+            </td>
+            <td>
+                <div class="problem-description">${escapeHtml(problem.description.substring(0, 100))}...</div>
+            </td>
+        </tr>
     `).join('');
 }
 
@@ -166,6 +208,7 @@ async function loadProblem(id) {
         const problem = data.problem;
 
         currentProblemId = id;
+        currentTestCases = problem.test_cases || [];
 
         problemDetail.innerHTML = `
             <h2>${escapeHtml(problem.title)}</h2>
@@ -173,13 +216,13 @@ async function loadProblem(id) {
                 <span class="difficulty-badge difficulty-${problem.difficulty}">
                     ${problem.difficulty}
                 </span>
-                <span>Time Limit: ${problem.time_limit}ms</span>
-                <span>Memory Limit: ${problem.memory_limit}KB</span>
+                <span class="text-muted">Time Limit: ${problem.time_limit}ms</span>
+                <span class="text-muted">Memory Limit: ${problem.memory_limit}KB</span>
             </div>
             <p>${escapeHtml(problem.description)}</p>
-            ${problem.test_cases && problem.test_cases.length > 0 ? `
-                <h3>Sample Test Cases</h3>
-                ${problem.test_cases.map((tc, i) => `
+            ${currentTestCases.length > 0 ? `
+                <h3>Examples</h3>
+                ${currentTestCases.map((tc, i) => `
                     <div class="test-result">
                         <h4>Example ${i + 1}</h4>
                         <p><strong>Input:</strong></p>
@@ -191,16 +234,54 @@ async function loadProblem(id) {
             ` : ''}
         `;
 
+        // Setup testcase selector
+        setupTestCaseSelector();
+
         problemsView.style.display = 'none';
         problemView.style.display = 'block';
 
         // Reset editor and results
         editor.setValue(getDefaultCode());
-        document.getElementById('resultsPanel').style.display = 'none';
-        document.getElementById('customInput').value = '';
+        document.getElementById('resultsContent').innerHTML = '<p class="text-muted">Run your code to see results here...</p>';
+
+        // Switch to description tab and testcase tab
+        document.querySelector('.tab-btn[data-tab="description"]').click();
+        document.querySelector('.console-tab-btn[data-console-tab="testcase"]').click();
     } catch (error) {
         alert(`Error loading problem: ${error.message}`);
     }
+}
+
+function setupTestCaseSelector() {
+    const selector = document.getElementById('testcaseSelector');
+
+    if (currentTestCases.length === 0) {
+        selector.innerHTML = '<p class="text-muted">No test cases available</p>';
+        return;
+    }
+
+    selector.innerHTML = currentTestCases.map((tc, i) => `
+        <button class="testcase-btn ${i === 0 ? 'active' : ''}" onclick="selectTestCase(${i})">
+            Case ${i + 1}
+        </button>
+    `).join('');
+
+    // Display first test case
+    selectTestCase(0);
+}
+
+function selectTestCase(index) {
+    selectedTestCaseIndex = index;
+    const tc = currentTestCases[index];
+
+    // Update active button
+    document.querySelectorAll('.testcase-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+    });
+
+    // Display testcase
+    document.getElementById('testcaseInput').textContent = tc.input;
+    document.getElementById('testcaseOutput').textContent = tc.expected_output;
 }
 
 async function handleCreateProblem(e) {
@@ -223,4 +304,10 @@ async function handleCreateProblem(e) {
     } catch (error) {
         alert(`Error creating problem: ${error.message}`);
     }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
