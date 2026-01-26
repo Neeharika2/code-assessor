@@ -118,7 +118,7 @@ async function submitCode() {
         // If all tests passed, show success message and reload problems list
         if (result.all_passed) {
             setTimeout(() => {
-                alert('🎉 Congratulations! You solved this problem!');
+                alert('Congratulations! You solved this problem!');
                 // Reload problems list to update completion status
                 if (typeof loadProblems === 'function') {
                     loadProblems();
@@ -150,50 +150,65 @@ function displaySubmitResult(result) {
         </div>
     `;
 
-    result.test_results.forEach((test, index) => {
-        html += `
-            <div class="test-result">
-                <h4>
-                    Test Case ${index + 1}: 
-                    <span style="color: ${test.passed ? 'var(--accent-green)' : 'var(--accent-red)'}">
-                        ${test.passed ? '✓ Passed' : '✗ Failed'}
-                    </span>
-                </h4>
-                <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 0.5rem;">
-                    <strong>Status:</strong> ${test.status}
-                </p>
-                ${test.input ? `
-                    <div style="margin-bottom: 0.5rem;">
-                        <label style="display: block; color: var(--text-secondary); font-size: 12px; margin-bottom: 0.25rem;">Input:</label>
-                        <pre style="background: var(--bg-tertiary); padding: 0.5rem; border-radius: 4px; font-size: 12px; margin: 0; border: 1px solid var(--border-primary);">${escapeHtml(test.input)}</pre>
-                    </div>
-                ` : ''}
-                <div style="margin-bottom: 0.5rem;">
-                    <label style="display: block; color: var(--text-secondary); font-size: 12px; margin-bottom: 0.25rem;">Expected Output:</label>
-                    <pre style="background: var(--bg-tertiary); padding: 0.5rem; border-radius: 4px; font-size: 12px; margin: 0; border: 1px solid var(--border-primary);">${escapeHtml(test.expected_output)}</pre>
-                </div>
-                <div style="margin-bottom: 0.5rem;">
-                    <label style="display: block; color: var(--text-secondary); font-size: 12px; margin-bottom: 0.25rem;">Your Output:</label>
-                    <pre style="background: var(--bg-tertiary); padding: 0.5rem; border-radius: 4px; font-size: 12px; margin: 0; border: 1px solid var(--border-primary);">${escapeHtml(test.stdout || 'No output')}</pre>
-                </div>
-                ${test.stderr ? `
-                    <div style="margin-bottom: 0.5rem;">
-                        <label style="display: block; color: var(--accent-red); font-size: 12px; margin-bottom: 0.25rem;">Errors:</label>
-                        <pre style="background: var(--bg-tertiary); padding: 0.5rem; border-radius: 4px; font-size: 12px; margin: 0; border: 1px solid var(--accent-red); color: var(--accent-red);">${escapeHtml(test.stderr)}</pre>
-                    </div>
-                ` : ''}
-                ${test.compile_output ? `
-                    <div style="margin-bottom: 0.5rem;">
-                        <label style="display: block; color: var(--accent-yellow); font-size: 12px; margin-bottom: 0.25rem;">Compilation:</label>
-                        <pre style="background: var(--bg-tertiary); padding: 0.5rem; border-radius: 4px; font-size: 12px; margin: 0; border: 1px solid var(--accent-yellow); color: var(--accent-yellow);">${escapeHtml(test.compile_output)}</pre>
-                    </div>
-                ` : ''}
-                <p style="color: var(--text-muted); font-size: 12px; margin-top: 0.5rem;">
-                    <strong>Time:</strong> ${test.time}s | <strong>Memory:</strong> ${test.memory} KB
-                </p>
-            </div>
-        `;
+    // Filter to only show sample test cases (those with input/output data) or all if running code
+    const visibleTests = result.test_results.filter((test) => {
+        // For Run Code, show all tests (they're all sample tests)
+        if (isRunCode) return true;
+        // For Submit Code, only show tests that have input/output (sample tests)
+        return test.input || test.expected_output;
     });
+
+    // Only display test case details if there are visible tests
+    if (visibleTests.length > 0) {
+        html += '<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-primary);"><h3 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 1rem;">Sample Test Cases:</h3>';
+
+        visibleTests.forEach((test, index) => {
+            html += `
+                <div class="test-result">
+                    <h4>
+                        Test Case ${index + 1}: 
+                        <span style="color: ${test.passed ? 'var(--accent-green)' : 'var(--accent-red)'}">
+                            ${test.passed ? '✓ Passed' : '✗ Failed'}
+                        </span>
+                    </h4>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 0.5rem;">
+                        <strong>Status:</strong> ${test.status}
+                    </p>
+                    ${test.input ? `
+                        <div style="margin-bottom: 0.5rem;">
+                            <label style="display: block; color: var(--text-secondary); font-size: 12px; margin-bottom: 0.25rem;">Input:</label>
+                            <pre style="background: var(--bg-tertiary); padding: 0.5rem; border-radius: 4px; font-size: 12px; margin: 0; border: 1px solid var(--border-primary);">${escapeHtml(test.input)}</pre>
+                        </div>
+                    ` : ''}
+                    <div style="margin-bottom: 0.5rem;">
+                        <label style="display: block; color: var(--text-secondary); font-size: 12px; margin-bottom: 0.25rem;">Expected Output:</label>
+                        <pre style="background: var(--bg-tertiary); padding: 0.5rem; border-radius: 4px; font-size: 12px; margin: 0; border: 1px solid var(--border-primary);">${escapeHtml(test.expected_output)}</pre>
+                    </div>
+                    <div style="margin-bottom: 0.5rem;">
+                        <label style="display: block; color: var(--text-secondary); font-size: 12px; margin-bottom: 0.25rem;">Your Output:</label>
+                        <pre style="background: var(--bg-tertiary); padding: 0.5rem; border-radius: 4px; font-size: 12px; margin: 0; border: 1px solid var(--border-primary);">${escapeHtml(test.stdout || 'No output')}</pre>
+                    </div>
+                    ${test.stderr ? `
+                        <div style="margin-bottom: 0.5rem;">
+                            <label style="display: block; color: var(--accent-red); font-size: 12px; margin-bottom: 0.25rem;">Errors:</label>
+                            <pre style="background: var(--bg-tertiary); padding: 0.5rem; border-radius: 4px; font-size: 12px; margin: 0; border: 1px solid var(--accent-red); color: var(--accent-red);">${escapeHtml(test.stderr)}</pre>
+                        </div>
+                    ` : ''}
+                    ${test.compile_output ? `
+                        <div style="margin-bottom: 0.5rem;">
+                            <label style="display: block; color: var(--accent-yellow); font-size: 12px; margin-bottom: 0.25rem;">Compilation:</label>
+                            <pre style="background: var(--bg-tertiary); padding: 0.5rem; border-radius: 4px; font-size: 12px; margin: 0; border: 1px solid var(--accent-yellow); color: var(--accent-yellow);">${escapeHtml(test.compile_output)}</pre>
+                        </div>
+                    ` : ''}
+                    <p style="color: var(--text-muted); font-size: 12px; margin-top: 0.5rem;">
+                        <strong>Time:</strong> ${test.time}s | <strong>Memory:</strong> ${test.memory} KB
+                    </p>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+    }
 
     resultsContent.innerHTML = html;
 }

@@ -83,6 +83,13 @@ func SubmitCode(c *gin.Context) {
 			return
 		}
 
+		// Hide input/output details for hidden (non-sample) test cases
+		if !testCase.IsSample {
+			result.Input = ""
+			result.ExpectedOutput = ""
+			result.Stdout = ""
+		}
+
 		results = append(results, *result)
 		if result.Passed {
 			passedCount++
