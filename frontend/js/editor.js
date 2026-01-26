@@ -22,7 +22,15 @@ function initEditor() {
                 horizontal: 'auto',
                 verticalScrollbarSize: 8,
                 horizontalScrollbarSize: 8
-            }
+            },
+            // Disable copy-paste functionality
+            domReadOnly: false, // Allow typing but restrict clipboard
+            contextmenu: false // Disable right-click context menu
+        });
+
+        // Disable only paste action
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, function () {
+            alert('⚠️ Paste is disabled in this editor');
         });
 
         // Language change handler
