@@ -1,12 +1,10 @@
 package services
 
 import (
-	"archive/zip"
 	"coding-platform/config"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -90,20 +88,19 @@ func CheckPlagiarism(problemID uint, submissions []SubmissionInfo) ([]Plagiarism
 	// Create unique run directory
 	runID := uuid.New().String()
 	runDir := filepath.Join(config.AppConfig.JPlagSubmissionsDir, fmt.Sprintf("run_%s", runID))
-	resultsDir := filepath.Join(config.AppConfig.JPlagResultsDir, fmt.Sprintf("run_%s", runID))
+	resultsZipPath := filepath.Join(config.AppConfig.JPlagResultsDir, fmt.Sprintf("run_%s.zip", runID))
+	resultsExtractDir := filepath.Join(config.AppConfig.JPlagResultsDir, fmt.Sprintf("run_%s", runID))
 
 	// Cleanup on exit
 	defer func() {
 		os.RemoveAll(runDir)
-		os.RemoveAll(resultsDir)
+		os.RemoveAll(resultsExtractDir)
+		os.Remove(resultsZipPath)
 	}()
 
-	// Create directories
+	// Create submission directory
 	if err := os.MkdirAll(runDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create run directory: %v", err)
-	}
-	if err := os.MkdirAll(resultsDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create results directory: %v", err)
 	}
 
 	// Create submission ID to folder name mapping
@@ -134,6 +131,7 @@ func CheckPlagiarism(problemID uint, submissions []SubmissionInfo) ([]Plagiarism
 	defer cancel()
 
 	// Docker command: mount /opt/jplag as /data
+	// JPlag -r flag creates a ZIP file at the specified path (adds .zip extension)
 	dockerArgs := []string{"run", "--rm",
 		"-v", fmt.Sprintf("%s:/data", config.AppConfig.JPlagBaseDir),
 		config.AppConfig.JPlagDockerImage,
@@ -155,16 +153,28 @@ func CheckPlagiarism(problemID uint, submissions []SubmissionInfo) ([]Plagiarism
 		log.Printf("[JPlag] Command warning: %v", err)
 	}
 
-	// Check if results exist
-	resultsZip := filepath.Join(resultsDir, "results.zip")
-	if _, err := os.Stat(resultsZip); os.IsNotExist(err) {
-		log.Printf("[JPlag] No results.zip found at %s", resultsZip)
-	} else {
-		log.Printf("[JPlag] Found results.zip at %s", resultsZip)
+	// Check if results ZIP exists (JPlag creates run_<uuid>.zip)
+	if _, err := os.Stat(resultsZipPath); os.IsNotExist(err) {
+		log.Printf("[JPlag] No results ZIP found at %s", resultsZipPath)
+		return nil, fmt.Errorf("JPlag did not produce results")
 	}
+	log.Printf("[JPlag] Found results ZIP at %s", resultsZipPath)
+
+	// Extract the ZIP file
+	if err := os.MkdirAll(resultsExtractDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create results extract directory: %v", err)
+	}
+	
+	unzipCmd := exec.Command("unzip", "-o", resultsZipPath, "-d", resultsExtractDir)
+	unzipOutput, err := unzipCmd.CombinedOutput()
+	if err != nil {
+		log.Printf("[JPlag] Unzip error: %v, output: %s", err, string(unzipOutput))
+		return nil, fmt.Errorf("failed to unzip results: %v", err)
+	}
+	log.Printf("[JPlag] Extracted results to %s", resultsExtractDir)
 
 	// Parse results
-	results, err := parseJPlagResults(resultsDir, submissionMap)
+	results, err := parseJPlagResults(resultsExtractDir, submissionMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse JPlag results: %v", err)
 	}
@@ -173,71 +183,91 @@ func CheckPlagiarism(problemID uint, submissions []SubmissionInfo) ([]Plagiarism
 	return results, nil
 }
 
-// parseJPlagResults reads and parses the JPlag output
+// parseJPlagResults reads and parses the JPlag output from extracted directory
 func parseJPlagResults(resultsDir string, submissionMap map[string]uint) ([]PlagiarismCheckResult, error) {
 	var results []PlagiarismCheckResult
 
-	// JPlag 5.x produces a results.zip file
-	zipPath := filepath.Join(resultsDir, "results.zip")
-	if _, err := os.Stat(zipPath); os.IsNotExist(err) {
-		// Try looking for overview.json directly
-		overviewPath := filepath.Join(resultsDir, "overview.json")
-		if _, err := os.Stat(overviewPath); os.IsNotExist(err) {
-			return results, nil // No results
-		}
-		return parseOverviewJSON(overviewPath, submissionMap)
-	}
+	log.Printf("[JPlag] Parsing results from %s", resultsDir)
 
-	// Extract and parse results.zip
-	return parseResultsZip(zipPath, submissionMap)
-}
-
-// parseResultsZip extracts and parses the JPlag results.zip
-func parseResultsZip(zipPath string, submissionMap map[string]uint) ([]PlagiarismCheckResult, error) {
-	var results []PlagiarismCheckResult
-
-	r, err := zip.OpenReader(zipPath)
+	// List all files in the results directory
+	files, err := os.ReadDir(resultsDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open results.zip: %v", err)
+		return nil, fmt.Errorf("failed to read results directory: %v", err)
 	}
-	defer r.Close()
 
-	for _, f := range r.File {
-		if f.Name == "overview.json" {
-			rc, err := f.Open()
+	log.Printf("[JPlag] Found %d files in results directory", len(files))
+
+	// Look for comparison files (format: s1-s2.json)
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		
+		name := file.Name()
+		log.Printf("[JPlag] Checking file: %s", name)
+		
+		// Parse sX-sY.json files (comparison results)
+		if strings.HasSuffix(name, ".json") && strings.Contains(name, "-") {
+			// Extract submission IDs from filename like "s1-s2.json"
+			baseName := strings.TrimSuffix(name, ".json")
+			parts := strings.Split(baseName, "-")
+			if len(parts) != 2 {
+				continue
+			}
+
+			subID1, ok1 := submissionMap[parts[0]]
+			subID2, ok2 := submissionMap[parts[1]]
+			if !ok1 || !ok2 {
+				log.Printf("[JPlag] Could not map %s or %s to submission IDs", parts[0], parts[1])
+				continue
+			}
+
+			// Read and parse the comparison JSON
+			filePath := filepath.Join(resultsDir, name)
+			data, err := os.ReadFile(filePath)
 			if err != nil {
-				return nil, err
-			}
-			defer rc.Close()
-
-			data, err := io.ReadAll(rc)
-			if err != nil {
-				return nil, err
+				log.Printf("[JPlag] Failed to read %s: %v", name, err)
+				continue
 			}
 
-			var overview JPlagOverview
-			if err := json.Unmarshal(data, &overview); err != nil {
-				return nil, fmt.Errorf("failed to parse overview.json: %v", err)
+			// Parse comparison JSON to get similarity
+			var comparison struct {
+				ID1         string `json:"id1"`
+				ID2         string `json:"id2"`
+				Similarities map[string]float64 `json:"similarities"`
+			}
+			if err := json.Unmarshal(data, &comparison); err != nil {
+				log.Printf("[JPlag] Failed to parse %s: %v", name, err)
+				continue
 			}
 
-			for _, comp := range overview.Comparisons {
-				subID1, ok1 := submissionMap[comp.FirstSubmission]
-				subID2, ok2 := submissionMap[comp.SecondSubmission]
-				if !ok1 || !ok2 {
-					continue
-				}
-
-				similarityPercent := comp.Similarity * 100
-				status := classifyStatus(similarityPercent)
-
-				results = append(results, PlagiarismCheckResult{
-					SubmissionID1:    subID1,
-					SubmissionID2:    subID2,
-					SimilarityPercent: similarityPercent,
-					Status:           status,
-				})
+			// Get MAX similarity (most important metric)
+			similarity := comparison.Similarities["MAX"]
+			if similarity == 0 {
+				// Try AVG as fallback
+				similarity = comparison.Similarities["AVG"]
 			}
-			break
+			
+			similarityPercent := similarity * 100
+			status := classifyStatus(similarityPercent)
+
+			log.Printf("[JPlag] Comparison %s: %.2f%% -> %s", name, similarityPercent, status)
+
+			results = append(results, PlagiarismCheckResult{
+				SubmissionID1:     subID1,
+				SubmissionID2:     subID2,
+				SimilarityPercent: similarityPercent,
+				Status:            status,
+			})
+		}
+	}
+
+	// If no comparison files found, try overview.json as fallback
+	if len(results) == 0 {
+		overviewPath := filepath.Join(resultsDir, "overview.json")
+		if _, err := os.Stat(overviewPath); err == nil {
+			log.Printf("[JPlag] No comparison files found, trying overview.json")
+			return parseOverviewJSON(overviewPath, submissionMap)
 		}
 	}
 
