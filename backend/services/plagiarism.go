@@ -54,16 +54,21 @@ type JPlagOverview struct {
 type SubmissionInfo struct {
 	ID         uint
 	UserID     uint
+	Username   string
 	SourceCode string
 	LanguageID int
 }
 
 // PlagiarismCheckResult represents the result of a plagiarism check
 type PlagiarismCheckResult struct {
-	SubmissionID1    uint    `json:"submission_id_1"`
-	SubmissionID2    uint    `json:"submission_id_2"`
+	SubmissionID1     uint    `json:"submission_id_1"`
+	SubmissionID2     uint    `json:"submission_id_2"`
+	UserID1           uint    `json:"user_id_1"`
+	UserID2           uint    `json:"user_id_2"`
+	Username1         string  `json:"username_1"`
+	Username2         string  `json:"username_2"`
 	SimilarityPercent float64 `json:"similarity_percent"`
-	Status           string  `json:"status"`
+	Status            string  `json:"status"`
 }
 
 // CheckPlagiarism runs JPlag on the given submissions for a problem
@@ -103,8 +108,8 @@ func CheckPlagiarism(problemID uint, submissions []SubmissionInfo) ([]Plagiarism
 		return nil, fmt.Errorf("failed to create run directory: %v", err)
 	}
 
-	// Create submission ID to folder name mapping
-	submissionMap := make(map[string]uint) // folder name -> submission ID
+	// Create submission folder name to full info mapping
+	submissionMap := make(map[string]SubmissionInfo) // folder name -> full submission info
 
 	log.Printf("[JPlag] Writing %d submissions to %s", len(submissions), runDir)
 
@@ -112,7 +117,7 @@ func CheckPlagiarism(problemID uint, submissions []SubmissionInfo) ([]Plagiarism
 	ext := languageExtensions[jplagLang]
 	for _, sub := range submissions {
 		folderName := fmt.Sprintf("s%d", sub.ID)
-		submissionMap[folderName] = sub.ID
+		submissionMap[folderName] = sub
 
 		subDir := filepath.Join(runDir, folderName)
 		if err := os.MkdirAll(subDir, 0755); err != nil {
@@ -184,7 +189,7 @@ func CheckPlagiarism(problemID uint, submissions []SubmissionInfo) ([]Plagiarism
 }
 
 // parseJPlagResults reads and parses the JPlag output from extracted directory
-func parseJPlagResults(resultsDir string, submissionMap map[string]uint) ([]PlagiarismCheckResult, error) {
+func parseJPlagResults(resultsDir string, submissionMap map[string]SubmissionInfo) ([]PlagiarismCheckResult, error) {
 	var results []PlagiarismCheckResult
 
 	log.Printf("[JPlag] Parsing results from %s", resultsDir)
@@ -215,8 +220,8 @@ func parseJPlagResults(resultsDir string, submissionMap map[string]uint) ([]Plag
 				continue
 			}
 
-			subID1, ok1 := submissionMap[parts[0]]
-			subID2, ok2 := submissionMap[parts[1]]
+			sub1, ok1 := submissionMap[parts[0]]
+			sub2, ok2 := submissionMap[parts[1]]
 			if !ok1 || !ok2 {
 				log.Printf("[JPlag] Could not map %s or %s to submission IDs", parts[0], parts[1])
 				continue
@@ -254,8 +259,12 @@ func parseJPlagResults(resultsDir string, submissionMap map[string]uint) ([]Plag
 			log.Printf("[JPlag] Comparison %s: %.2f%% -> %s", name, similarityPercent, status)
 
 			results = append(results, PlagiarismCheckResult{
-				SubmissionID1:     subID1,
-				SubmissionID2:     subID2,
+				SubmissionID1:     sub1.ID,
+				SubmissionID2:     sub2.ID,
+				UserID1:           sub1.UserID,
+				UserID2:           sub2.UserID,
+				Username1:         sub1.Username,
+				Username2:         sub2.Username,
 				SimilarityPercent: similarityPercent,
 				Status:            status,
 			})
@@ -275,7 +284,7 @@ func parseJPlagResults(resultsDir string, submissionMap map[string]uint) ([]Plag
 }
 
 // parseOverviewJSON parses the overview.json file directly
-func parseOverviewJSON(path string, submissionMap map[string]uint) ([]PlagiarismCheckResult, error) {
+func parseOverviewJSON(path string, submissionMap map[string]SubmissionInfo) ([]PlagiarismCheckResult, error) {
 	var results []PlagiarismCheckResult
 
 	data, err := os.ReadFile(path)
@@ -289,8 +298,8 @@ func parseOverviewJSON(path string, submissionMap map[string]uint) ([]Plagiarism
 	}
 
 	for _, comp := range overview.Comparisons {
-		subID1, ok1 := submissionMap[comp.FirstSubmission]
-		subID2, ok2 := submissionMap[comp.SecondSubmission]
+		sub1, ok1 := submissionMap[comp.FirstSubmission]
+		sub2, ok2 := submissionMap[comp.SecondSubmission]
 		if !ok1 || !ok2 {
 			continue
 		}
@@ -299,10 +308,14 @@ func parseOverviewJSON(path string, submissionMap map[string]uint) ([]Plagiarism
 		status := classifyStatus(similarityPercent)
 
 		results = append(results, PlagiarismCheckResult{
-			SubmissionID1:    subID1,
-			SubmissionID2:    subID2,
+			SubmissionID1:     sub1.ID,
+			SubmissionID2:     sub2.ID,
+			UserID1:           sub1.UserID,
+			UserID2:           sub2.UserID,
+			Username1:         sub1.Username,
+			Username2:         sub2.Username,
 			SimilarityPercent: similarityPercent,
-			Status:           status,
+			Status:            status,
 		})
 	}
 

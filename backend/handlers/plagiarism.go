@@ -156,7 +156,7 @@ func CheckProblemPlagiarism(c *gin.Context) {
 	}
 
 	var submissions []models.Submission
-	if err := query.Order("submitted_at ASC").Find(&submissions).Error; err != nil {
+	if err := query.Preload("User").Order("submitted_at ASC").Find(&submissions).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch submissions"})
 		return
 	}
@@ -185,6 +185,7 @@ func CheckProblemPlagiarism(c *gin.Context) {
 			submissionsByLang[sub.LanguageID] = append(submissionsByLang[sub.LanguageID], services.SubmissionInfo{
 				ID:         sub.ID,
 				UserID:     sub.UserID,
+				Username:   sub.User.Username,
 				SourceCode: sub.SourceCode,
 				LanguageID: sub.LanguageID,
 			})

@@ -873,9 +873,9 @@ function displayPlagiarismResults(data) {
         <table class="problems-table">
             <thead>
                 <tr>
-                    <th width="15%">Submission 1</th>
-                    <th width="15%">Submission 2</th>
-                    <th width="20%">Similarity</th>
+                    <th width="20%">User 1</th>
+                    <th width="20%">User 2</th>
+                    <th width="25%">Similarity</th>
                     <th width="15%">Status</th>
                 </tr>
             </thead>
@@ -885,8 +885,14 @@ function displayPlagiarismResults(data) {
             r.status === 'SUSPICIOUS' ? 'difficulty-medium' : 'difficulty-easy';
         return `
                         <tr>
-                            <td>#${r.submission_id_1}</td>
-                            <td>#${r.submission_id_2}</td>
+                            <td>
+                                <div><strong>${escapeHtml(r.username_1 || 'Unknown')}</strong></div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary);">Submission #${r.submission_id_1}</div>
+                            </td>
+                            <td>
+                                <div><strong>${escapeHtml(r.username_2 || 'Unknown')}</strong></div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary);">Submission #${r.submission_id_2}</div>
+                            </td>
                             <td>
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                                     <div style="flex: 1; height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden;">
