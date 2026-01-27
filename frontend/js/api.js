@@ -141,4 +141,21 @@ class API {
     static async getProblemSubmissions(problemId) {
         return this.request(`/problems/${problemId}/submissions`);
     }
+
+    // Plagiarism Detection (Admin only)
+    static async checkProblemPlagiarism(problemId, languageId = null) {
+        let url = `/plagiarism/problems/${problemId}`;
+        if (languageId) {
+            url += `?language_id=${languageId}`;
+        }
+        return this.request(url);
+    }
+
+    static async checkSubmissionPlagiarism(submissionId) {
+        return this.request(`/plagiarism/submissions/${submissionId}`);
+    }
+
+    static async getPlagiarismResults(problemId) {
+        return this.request(`/plagiarism/results/${problemId}`);
+    }
 }

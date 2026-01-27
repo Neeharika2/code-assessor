@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -17,6 +18,12 @@ type Config struct {
 	DBName      string
 	JWTSecret   string
 	Judge0URL   string
+	// JPlag configuration
+	JPlagBaseDir        string
+	JPlagSubmissionsDir string
+	JPlagResultsDir     string
+	JPlagDockerImage    string
+	JPlagTimeoutSeconds int
 }
 
 var AppConfig *Config
@@ -35,6 +42,12 @@ func LoadConfig() error {
 		DBName:     getEnv("DB_NAME", "coding_platform"),
 		JWTSecret:  getEnv("JWT_SECRET", ""),
 		Judge0URL:  getEnv("JUDGE0_URL", "http://localhost:2358"),
+		// JPlag configuration
+		JPlagBaseDir:        getEnv("JPLAG_BASE_DIR", "/opt/jplag"),
+		JPlagSubmissionsDir: getEnv("JPLAG_SUBMISSIONS_DIR", "/opt/jplag/submissions"),
+		JPlagResultsDir:     getEnv("JPLAG_RESULTS_DIR", "/opt/jplag/results"),
+		JPlagDockerImage:    getEnv("JPLAG_DOCKER_IMAGE", "jplag"),
+		JPlagTimeoutSeconds: getEnvInt("JPLAG_TIMEOUT_SECONDS", 60),
 	}
 
 	// Validate required fields
@@ -54,6 +67,18 @@ func getEnv(key, defaultValue string) string {
 		return defaultValue
 	}
 	return value
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	intValue, err := strconv.Atoi(value)
+	if err != nil {
+		return defaultValue
+	}
+	return intValue
 }
 
 func (c *Config) GetDSN() string {

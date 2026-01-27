@@ -23,6 +23,7 @@
                     <h1>CodePlatform</h1>
                 </div>
                 <button id="problemsListBtn" class="btn-nav">Problems</button>
+                <button id="plagiarismBtn" class="btn-nav" style="display: none;">Plagiarism</button>
             </div>
             <div class="nav-menu">
                 <button id="loginBtn" class="btn btn-secondary">Login</button>
@@ -56,6 +57,33 @@
                         <!-- Problems will be inserted here -->
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- Plagiarism View (Admin Only) -->
+        <div id="plagiarismView" class="problems-view" style="display: none;">
+            <div class="problems-header">
+                <h2>Plagiarism Detection</h2>
+            </div>
+            <div class="plagiarism-controls"
+                style="display: flex; gap: 1rem; margin-bottom: 1.5rem; align-items: center;">
+                <select id="plagiarismProblemSelect" class="language-select" style="min-width: 250px;">
+                    <option value="">Select a problem...</option>
+                </select>
+                <select id="plagiarismLanguageSelect" class="language-select">
+                    <option value="">All Languages</option>
+                    <option value="71">Python 3</option>
+                    <option value="63">JavaScript</option>
+                    <option value="54">C++</option>
+                    <option value="62">Java</option>
+                    <option value="48">C</option>
+                    <option value="60">Go</option>
+                </select>
+                <button id="checkPlagiarismBtn" class="btn btn-primary">Check Plagiarism</button>
+            </div>
+            <div id="plagiarismStatus" class="text-muted" style="margin-bottom: 1rem;"></div>
+            <div id="plagiarismResults" class="problems-table-container">
+                <p class="text-muted">Select a problem and click "Check Plagiarism" to analyze submissions.</p>
             </div>
         </div>
 

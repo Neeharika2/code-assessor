@@ -34,6 +34,8 @@ func Migrate() error {
 		&models.TestCase{},
 		&models.Submission{},
 		&models.UserProblemCompletion{},
+		&models.PlagiarismResult{},
+		&models.PlagiarismMatch{},
 	)
 	
 	if err != nil {

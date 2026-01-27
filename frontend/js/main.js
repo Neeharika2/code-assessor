@@ -770,3 +770,172 @@ function displaySubmissions(submissions) {
 
     submissionsContent.innerHTML = html;
 }
+
+// ==========================================
+// Plagiarism Detection (Admin Only)
+// ==========================================
+
+const plagiarismView = document.getElementById('plagiarismView');
+const plagiarismBtn = document.getElementById('plagiarismBtn');
+
+// Show plagiarism button for admins
+function updatePlagiarismUI() {
+    if (currentUser && currentUser.role === 'admin') {
+        plagiarismBtn.style.display = 'inline-block';
+    } else {
+        plagiarismBtn.style.display = 'none';
+    }
+}
+
+// Load problems into plagiarism selector
+async function loadPlagiarismProblems() {
+    try {
+        const data = await API.getProblems();
+        const select = document.getElementById('plagiarismProblemSelect');
+
+        select.innerHTML = '<option value="">Select a problem...</option>' +
+            (data.problems || []).map(p =>
+                `<option value="${p.id}">${escapeHtml(p.title)}</option>`
+            ).join('');
+    } catch (error) {
+        console.error('Error loading problems for plagiarism:', error);
+    }
+}
+
+// Show plagiarism view
+function showPlagiarismView() {
+    problemsView.style.display = 'none';
+    problemView.style.display = 'none';
+    plagiarismView.style.display = 'block';
+    loadPlagiarismProblems();
+}
+
+// Check plagiarism for selected problem
+async function checkPlagiarism() {
+    const problemId = document.getElementById('plagiarismProblemSelect').value;
+    const languageId = document.getElementById('plagiarismLanguageSelect').value;
+    const statusEl = document.getElementById('plagiarismStatus');
+    const resultsEl = document.getElementById('plagiarismResults');
+
+    if (!problemId) {
+        alert('Please select a problem');
+        return;
+    }
+
+    statusEl.innerHTML = '<span style="color: var(--text-secondary);">Checking for plagiarism... This may take a moment.</span>';
+    resultsEl.innerHTML = '';
+
+    try {
+        const data = await API.checkProblemPlagiarism(problemId, languageId || null);
+        displayPlagiarismResults(data);
+    } catch (error) {
+        statusEl.innerHTML = `<span style="color: var(--accent-red);">Error: ${error.message}</span>`;
+        resultsEl.innerHTML = '<p class="text-muted">Failed to check plagiarism. Make sure JPlag is properly configured on the server.</p>';
+    }
+}
+
+// Display plagiarism results
+function displayPlagiarismResults(data) {
+    const statusEl = document.getElementById('plagiarismStatus');
+    const resultsEl = document.getElementById('plagiarismResults');
+
+    if (data.message) {
+        statusEl.innerHTML = `<span style="color: var(--text-secondary);">${data.message}</span>`;
+        resultsEl.innerHTML = '';
+        return;
+    }
+
+    const flaggedCount = data.flagged_count || 0;
+    const statusColor = flaggedCount > 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+
+    statusEl.innerHTML = `
+        <strong>Results:</strong> 
+        ${data.total_submissions} submissions analyzed, 
+        ${data.total_comparisons} comparisons made, 
+        <span style="color: ${statusColor}; font-weight: 600;">${flaggedCount} flagged</span>
+    `;
+
+    if (!data.results || data.results.length === 0) {
+        resultsEl.innerHTML = '<p class="text-muted">No plagiarism detected between different users.</p>';
+        return;
+    }
+
+    const languageNames = {
+        71: 'Python 3',
+        63: 'JavaScript',
+        54: 'C++',
+        62: 'Java',
+        48: 'C',
+        60: 'Go'
+    };
+
+    resultsEl.innerHTML = `
+        <table class="problems-table">
+            <thead>
+                <tr>
+                    <th width="15%">Submission 1</th>
+                    <th width="15%">Submission 2</th>
+                    <th width="20%">Similarity</th>
+                    <th width="15%">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${data.results.map(r => {
+        const statusClass = r.status === 'PLAGIARIZED' ? 'difficulty-hard' :
+            r.status === 'SUSPICIOUS' ? 'difficulty-medium' : 'difficulty-easy';
+        return `
+                        <tr>
+                            <td>#${r.submission_id_1}</td>
+                            <td>#${r.submission_id_2}</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <div style="flex: 1; height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden;">
+                                        <div style="width: ${r.similarity_percent}%; height: 100%; background: ${r.status === 'PLAGIARIZED' ? 'var(--accent-red)' :
+                r.status === 'SUSPICIOUS' ? 'var(--accent-yellow)' : 'var(--accent-green)'
+            };"></div>
+                                    </div>
+                                    <span style="font-weight: 600;">${r.similarity_percent.toFixed(1)}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="difficulty-badge ${statusClass}">${r.status}</span>
+                            </td>
+                        </tr>
+                    `;
+    }).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// Setup plagiarism event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    // Update plagiarism UI on auth changes
+    updatePlagiarismUI();
+
+    // Plagiarism nav button
+    if (plagiarismBtn) {
+        plagiarismBtn.addEventListener('click', showPlagiarismView);
+    }
+
+    // Check plagiarism button
+    const checkBtn = document.getElementById('checkPlagiarismBtn');
+    if (checkBtn) {
+        checkBtn.addEventListener('click', checkPlagiarism);
+    }
+
+    // Problems list button should hide plagiarism view
+    document.getElementById('problemsListBtn').addEventListener('click', () => {
+        if (plagiarismView) {
+            plagiarismView.style.display = 'none';
+        }
+    });
+});
+
+// Override updateAuthUI to also update plagiarism
+const originalUpdateAuthUI = updateAuthUI;
+updateAuthUI = function () {
+    originalUpdateAuthUI();
+    updatePlagiarismUI();
+};
+

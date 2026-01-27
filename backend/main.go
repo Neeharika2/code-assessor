@@ -84,6 +84,11 @@ func main() {
 				admin.POST("/problems/:id/testcases", handlers.CreateTestCase)
 				admin.GET("/problems/:id/testcases", handlers.GetTestCases)
 				admin.DELETE("/problems/:id/testcases/:testcase_id", handlers.DeleteTestCase)
+				
+				// Plagiarism detection routes
+				admin.GET("/plagiarism/submissions/:id", handlers.CheckSubmissionPlagiarism)
+				admin.GET("/plagiarism/problems/:id", handlers.CheckProblemPlagiarism)
+				admin.GET("/plagiarism/results/:problem_id", handlers.GetPlagiarismResults)
 			}
 
 			// Authenticated user routes
